@@ -28,6 +28,8 @@ int main() {
   string map_file_ = "../data/highway_map.csv";
   // The max s value before wrapping around the track back to 0
   double max_s = 6945.554;
+  // Have a reference velocity to target
+  double ref_vel = 0.0;   //mph (the speed limit is 50 mph)
 
   std::ifstream in_map_(map_file_.c_str(), std::ifstream::in);
 
@@ -51,8 +53,8 @@ int main() {
     map_waypoints_dy.push_back(d_y);
   }
 
-  h.onMessage([&map_waypoints_x,&map_waypoints_y,&map_waypoints_s,
-               &map_waypoints_dx,&map_waypoints_dy]
+  h.onMessage([&ref_vel,&map_waypoints_x,&map_waypoints_y,
+               &map_waypoints_s,&map_waypoints_dx,&map_waypoints_dy]
               (uWS::WebSocket<uWS::SERVER> ws, char *data, size_t length,
                uWS::OpCode opCode) {
     // "42" at the start of the message means there's a websocket message event.
@@ -85,8 +87,10 @@ int main() {
           double end_path_s = j[1]["end_path_s"];
           double end_path_d = j[1]["end_path_d"];
 
-          // Sensor Fusion Data, a list of all other cars on the same side
-          //   of the road.
+          // Sensor Fusion Data, a list of all other cars on the same side of the road.
+          // The data format for each car is: [ id, x, y, vx, vy, s, d]. The id is a unique identifier for that car.
+          // The x, y values are in global map coordinates, and the vx, vy values are the velocity components,
+          // also in reference to the global map. Finally s and d are the Frenet coordinates for that car.
           auto sensor_fusion = j[1]["sensor_fusion"];
 
           json msgJson;
@@ -95,18 +99,59 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
+          // the lane of our car
+          int lane = (int)car_d / 4;
+
           /**
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
 
-          // start in lane one
-          int lane = 1;
-
-          // Have a reference velocity to target
-          double ref_vel = 49.5;   //mph (the speed limit is 50 mph)
-
           int prev_size = previous_path_x.size();
+
+          if (prev_size > 0){
+            car_s = end_path_s;   //our car's previous path's end s values
+          }
+
+          bool too_close = false;
+          bool left_lane_available = false;
+          bool right_lane_available = false;
+
+          // using sensor fusion data to avoid collision
+          for (int i = 0; i < sensor_fusion.size(); i++){
+            float d = sensor_fusion[i][6];
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            double check_speed = sqrt(vx*vx+vy*vy);
+            double check_car_s = sensor_fusion[i][5];   // current s
+            // check if the other cars in my lane
+            if (d < (2+4*lane+2) && d > (2+4*lane-2)){
+              // predect the car's s in the future
+              check_car_s += (double)prev_size * 0.02 * check_speed;
+
+              if ((car_s < check_car_s) && (check_car_s - car_s) < 30){
+                // if the other car is in front of us and the gap between the other car and our car is smaller than 30 meters,
+                // then we need to take action (lower our speed or change lanes).
+                //ref_vel = 30;   // mph
+                too_close = true;
+                /*
+                if (lane>0){
+                  lane -= 1;
+                }
+                else if (lane<2){
+                  lane += 1;
+                }
+                */
+              }
+            }
+          }
+
+          if (too_close){
+            ref_vel -= 0.15;
+          }
+          else if(ref_vel < 49.5){
+            ref_vel += 0.25;
+          }
 
           // Create a list of widely spaced (x,y) waypoints, evenly spaced at 30m.
           // Will use these waypoints with spline
@@ -117,7 +162,7 @@ int main() {
           // We will reference the starting point as where the car is or at the previous path end point.
           double ref_x = car_x;
           double ref_y = car_y;
-          duoble ref_yaw = deg2rad(car_yaw);
+          double ref_yaw = deg2rad(car_yaw);
 
           // If the previous path size smaller than 2, use where the car is as the starting point
           if (prev_size < 2){
@@ -132,11 +177,11 @@ int main() {
           }
           // Use the previous path's end point as starting point
           else{
-            ref_x = previous_path_x[-1];
-            ref_y = previous_path_y[-1];
+            ref_x = previous_path_x[prev_size-1];
+            ref_y = previous_path_y[prev_size-1];
 
-            double prev_ref_x = previous_path_x[-2];
-            double prev_ref_y = previous_path_y[-2];
+            double prev_ref_x = previous_path_x[prev_size-2];
+            double prev_ref_y = previous_path_y[prev_size-2];
             ref_yaw = atan2(ref_y-prev_ref_y, ref_x-prev_ref_x);
 
             ptsx.push_back(prev_ref_x);
@@ -158,11 +203,12 @@ int main() {
           ptsy.push_back(next_wp1[1]);
           ptsy.push_back(next_wp2[1]);
 
-          // shift car reference angle to 0 degree (all the weightpoints on x axis)
           for (int i = 0; i < ptsx.size(); i++){
-            double shift_x = ptsx[i] - ref_x; // use (ref_x, ref_y) as origin (0,0)
+            // use (ref_x, ref_y) as origin(0,0), and shift all the waypoints
+            double shift_x = ptsx[i] - ref_x;
             double shift_y = ptsy[i] - ref_y;
 
+            // rotate car reference angle to 0 degree
             ptsx[i] = (shift_x * cos(0-ref_yaw) - shift_y * sin(0-ref_yaw));
             ptsy[i] = (shift_x * sin(0-ref_yaw) + shift_y * cos(0-ref_yaw));
           }
@@ -173,9 +219,9 @@ int main() {
           // Add those 5 anchor points(waypoints) to the spline
           s.set_points(ptsx, ptsy);
 
-          // Start with all of the previous path points form last time
+          // Start with all of the previous path points from last time
           // Every time we will create some waypoints(say 50), but the simulator will only take a few points(say 5),
-          // So, the previous_path will have 45 waypoints left, and we'll start with those 45 waypoints.
+          // therefore, the previous_path will have 45 waypoints left, and we'll start with those 45 waypoints.
           for (int i = 0; i < previous_path_x.size(); i++){
             next_x_vals.push_back(previous_path_x[i]);
             next_y_vals.push_back(previous_path_y[i]);
@@ -200,6 +246,7 @@ int main() {
 
             double x_reference = x_point;
             double y_reference = y_point;
+
             // Rotate back to normal
             x_point = x_reference * cos(ref_yaw) - y_reference * sin(ref_yaw);
             y_point = x_reference * sin(ref_yaw) + y_reference * cos(ref_yaw);
