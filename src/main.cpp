@@ -114,8 +114,13 @@ int main() {
           }
 
           bool too_close = false;
-          bool left_lane_available = false;
-          bool right_lane_available = false;
+          bool left_lane_available = true;
+          bool right_lane_available = true;
+          bool far_right_lane = true;
+          bool far_left_lane = true;
+          double speed_of_front_car;
+          double speed_of_adjecent_car;
+          double target_speed;
 
           // using sensor fusion data to avoid collision
           for (int i = 0; i < sensor_fusion.size(); i++){
@@ -125,6 +130,7 @@ int main() {
             double check_speed = sqrt(vx*vx+vy*vy);
             double check_car_s = sensor_fusion[i][5];   // current s
             // check if the other cars in my lane
+
             if (d < (2+4*lane+2) && d > (2+4*lane-2)){
               // predect the car's s in the future
               check_car_s += (double)prev_size * 0.02 * check_speed;
@@ -132,25 +138,82 @@ int main() {
               if ((car_s < check_car_s) && (check_car_s - car_s) < 30){
                 // if the other car is in front of us and the gap between the other car and our car is smaller than 30 meters,
                 // then we need to take action (lower our speed or change lanes).
-                //ref_vel = 30;   // mph
                 too_close = true;
-                /*
-                if (lane>0){
-                  lane -= 1;
+                target_speed = check_speed;
+                if (lane == 0){
+                  far_left_lane = false;
                 }
-                else if (lane<2){
-                  lane += 1;
+                else if (lane == 2){
+                  far_right_lane = false;
                 }
-                */
+              }
+            }
+            // if the other car not in my lane, see which lane it is.
+            else{
+              int other_car_lane  = (int)d / 4;
+
+              // predect the car's s in the future
+              check_car_s += (double)prev_size * 0.02 * check_speed;
+
+              // check if the other car in the picked regien
+              if ((check_car_s - car_s) < 60 && (check_car_s - car_s) > -20){
+                if (other_car_lane == 0){
+                  far_left_lane = false;
+                }
+                else if (other_car_lane == 2){
+                  far_right_lane = false;
+                }
+                // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0
+                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20  && (check_car_s - car_s) > -5){
+                  left_lane_available = false;
+                }
+                // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
+                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -5){
+                  right_lane_available = false;
+                }
+                //else if (abs(lane-other_car_lane) > 1){
+                //  if ((check_car_s - car_s) < 30 && check_speed < car_speed){
+                //    far_right_lane = false;
+                //    far_left_lane = false;
+                //  }
+                //}
               }
             }
           }
 
           if (too_close){
-            ref_vel -= 0.15;
+            if ((left_lane_available) && (lane > 0)){
+              if (far_right_lane){
+                lane += 1;
+              }
+              else{
+                lane -= 1;
+              }
+            }
+            else if ((right_lane_available) && (lane < 2)){
+              if (far_left_lane){
+                lane -= 1;
+              }
+              else{
+                lane += 1;
+              }
+            }
+            else{
+              if (ref_vel > target_speed){
+                ref_vel -= 0.225;
+              }
+              else{
+                ref_vel = target_speed;
+              }
+            }
           }
           else if(ref_vel < 49.5){
-            ref_vel += 0.25;
+            if (ref_vel < 30){
+              ref_vel += 0.4;
+            }
+            else{
+              ref_vel += 0.25;
+            }
           }
 
           // Create a list of widely spaced (x,y) waypoints, evenly spaced at 30m.
@@ -228,7 +291,7 @@ int main() {
           }
 
           // Calculate how to break up spline points so that we travel at our desired reference velocity
-          double target_x = 30.0;   // set horizon value = 30
+          double target_x = 10.0;   // set horizon value = 30
           double target_y = s(target_x);   // giving the spline x value to get y
           double target_dist = sqrt(target_x*target_x + target_y*target_y);   // the distance from our car to the target point
 
