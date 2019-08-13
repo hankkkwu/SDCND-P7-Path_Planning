@@ -118,9 +118,8 @@ int main() {
           bool right_lane_available = true;
           bool far_right_lane = true;
           bool far_left_lane = true;
-          double speed_of_front_car;
-          double speed_of_adjecent_car;
-          double target_speed;
+          double front_car_speed;
+          double front_car_position;
 
           // using sensor fusion data to avoid collision
           for (int i = 0; i < sensor_fusion.size(); i++){
@@ -139,7 +138,8 @@ int main() {
                 // if the other car is in front of us and the gap between the other car and our car is smaller than 30 meters,
                 // then we need to take action (lower our speed or change lanes).
                 too_close = true;
-                target_speed = check_speed;
+                front_car_speed = check_speed;
+                front_car_position = check_car_s;
                 if (lane == 0){
                   far_left_lane = false;
                 }
@@ -156,7 +156,7 @@ int main() {
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
               // check if the other car in the picked regien
-              if ((check_car_s - car_s) < 60 && (check_car_s - car_s) > -20){
+              if ((check_car_s - car_s) < 100 && (check_car_s - car_s) > -20){
                 if (other_car_lane == 0){
                   far_left_lane = false;
                 }
@@ -164,19 +164,48 @@ int main() {
                   far_right_lane = false;
                 }
                 // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0
-                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20  && (check_car_s - car_s) > -5){
+                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -5){
                   left_lane_available = false;
                 }
                 // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
                 else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -5){
                   right_lane_available = false;
                 }
-                //else if (abs(lane-other_car_lane) > 1){
-                //  if ((check_car_s - car_s) < 30 && check_speed < car_speed){
-                //    far_right_lane = false;
-                //    far_left_lane = false;
-                //  }
-                //}
+              }
+            }
+          }
+
+          for (int i = 0; i < sensor_fusion.size(); i++){
+            float d = sensor_fusion[i][6];
+            double vx = sensor_fusion[i][3];
+            double vy = sensor_fusion[i][4];
+            double check_speed = sqrt(vx*vx+vy*vy);
+            double check_car_s = sensor_fusion[i][5];   // current s
+            // check if the other cars in my lane
+
+            if (d < (2+4*lane+2) && d > (2+4*lane-2)){
+              continue;
+            }
+            else{
+              int other_car_lane  = (int)d / 4;
+              // predect the car's s in the future
+              check_car_s += (double)prev_size * 0.02 * check_speed;
+
+              double adjecent_car_pos = check_car_s;
+
+              if (fabs(adjecent_car_pos - front_car_position) < 5){
+                if (lane == 1 && other_car_lane == 2){
+                  right_lane_available = false;
+                }
+                else if (lane == 1 && other_car_lane == 0){
+                  left_lane_available = false;
+                }
+                else if (lane == 0 && other_car_lane == 1){
+                  right_lane_available = false;
+                }
+                else if (lane == 2 && other_car_lane == 1){
+                  left_lane_available = false;
+                }
               }
             }
           }
@@ -199,11 +228,11 @@ int main() {
               }
             }
             else{
-              if (ref_vel > target_speed){
+              if (ref_vel > front_car_speed){
                 ref_vel -= 0.225;
               }
               else{
-                ref_vel = target_speed;
+                ref_vel = front_car_speed;
               }
             }
           }
