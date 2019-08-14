@@ -113,13 +113,14 @@ int main() {
             car_s = end_path_s;   //our car's previous path's end s values
           }
 
-          bool too_close = false;
-          bool left_lane_available = true;
-          bool right_lane_available = true;
-          bool far_right_lane = true;
-          bool far_left_lane = true;
-          double front_car_speed;
-          double front_car_position;
+          bool too_close = false;               // check if front car is too close
+          bool left_lane_available = true;      // check if left lane is safe to go
+          bool right_lane_available = true;     // check if right lane is safe to go
+          bool most_right_lane = true;          // check if lane 2 within some range has any car or not, this is for the situation
+                                                // that our car in lane 1, and try to change lanes
+          bool most_left_lane = true;           // check if lane 0 within some range has any car or not
+          double front_car_speed;               // speed of the car in front of us
+          double front_car_position;            // s value of the car in front of us
 
           // using sensor fusion data to avoid collision
           for (int i = 0; i < sensor_fusion.size(); i++){
@@ -128,8 +129,8 @@ int main() {
             double vy = sensor_fusion[i][4];
             double check_speed = sqrt(vx*vx+vy*vy);
             double check_car_s = sensor_fusion[i][5];   // current s
-            // check if the other cars in my lane
 
+            // check if the other cars in my lane
             if (d < (2+4*lane+2) && d > (2+4*lane-2)){
               // predect the car's s in the future
               check_car_s += (double)prev_size * 0.02 * check_speed;
@@ -141,34 +142,39 @@ int main() {
                 front_car_speed = check_speed;
                 front_car_position = check_car_s;
                 if (lane == 0){
-                  far_left_lane = false;
+                  // if our car in lane 0, and there is a car in front of us, then most_left_lane = false
+                  most_left_lane = false;
                 }
                 else if (lane == 2){
-                  far_right_lane = false;
+                  // if our car in lane 2, and there is a car in front of us, then most_right_lane = false
+                  most_right_lane = false;
                 }
               }
             }
             // if the other car not in my lane, see which lane it is.
             else{
-              int other_car_lane  = (int)d / 4;
+              int other_car_lane  = (int)d / 4;   // the lane of other car
 
               // predect the car's s in the future
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
-              // check if the other car in the picked regien
+              // check if there is a car in adjecent lane within the range (-20m ~ 100m)
               if ((check_car_s - car_s) < 100 && (check_car_s - car_s) > -20){
                 if (other_car_lane == 0){
-                  far_left_lane = false;
+                  // if there is other car in lane 0, then most_left_lane = false
+                  most_left_lane = false;
                 }
                 else if (other_car_lane == 2){
-                  far_right_lane = false;
+                  // if there is other car in lane 2, then most_left_lane = false
+                  most_right_lane = false;
                 }
                 // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0
-                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -5){
+                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -10){
+                  // if the car on the left lane
                   left_lane_available = false;
                 }
                 // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
-                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -5){
+                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -10){
                   right_lane_available = false;
                 }
               }
@@ -181,8 +187,8 @@ int main() {
             double vy = sensor_fusion[i][4];
             double check_speed = sqrt(vx*vx+vy*vy);
             double check_car_s = sensor_fusion[i][5];   // current s
-            // check if the other cars in my lane
 
+            // check if the other cars in my lane
             if (d < (2+4*lane+2) && d > (2+4*lane-2)){
               continue;
             }
@@ -192,8 +198,8 @@ int main() {
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
               double adjecent_car_pos = check_car_s;
-
-              if (fabs(adjecent_car_pos - front_car_position) < 5){
+              // Make path planning more solid when changing lanes
+              if (fabs(adjecent_car_pos - front_car_position) < 8){
                 if (lane == 1 && other_car_lane == 2){
                   right_lane_available = false;
                 }
@@ -211,23 +217,45 @@ int main() {
           }
 
           if (too_close){
+            // if our car is too close to the front car, then consider change lanes
             if ((left_lane_available) && (lane > 0)){
-              if (far_right_lane){
+              // if left lane is safe to change and our car is not in lane 0, we can consider change to left lane
+              if (most_right_lane && !most_left_lane){
+                // if our car in lane 1, and there is no car in lane 2 within 120 meters,
+                // but there is car in lane 0 within 120 meters, then change to right lane
                 lane += 1;
+                if(ref_vel < 49.5){
+                  ref_vel += 0.1;
+                }
               }
               else{
+                // if there is car in lane 2 within 120 meters then change to left lane
                 lane -= 1;
+                if(ref_vel < 49.5){
+                  ref_vel += 0.1;
+                }
               }
             }
             else if ((right_lane_available) && (lane < 2)){
-              if (far_left_lane){
+              // if right lane is safe to change and our car is not in lane 2, we can consider change to right lane
+              if (most_left_lane && !most_right_lane){
+                // if our car in lane 1, and there is no car in lane 0 within 120 meters,
+                // but there is car in lane 2 within 120 meters, then change to left lane
                 lane -= 1;
+                if(ref_vel < 49.5){
+                  ref_vel += 0.1;
+                }
               }
               else{
+                // if there is car in lane 0 within 120 meters then change to right lane
                 lane += 1;
+                if(ref_vel < 49.5){
+                  ref_vel += 0.1;
+                }
               }
             }
             else{
+              // if lane change is not available, then try to slow down to front car's speed
               if (ref_vel > front_car_speed){
                 ref_vel -= 0.225;
               }
@@ -320,7 +348,7 @@ int main() {
           }
 
           // Calculate how to break up spline points so that we travel at our desired reference velocity
-          double target_x = 10.0;   // set horizon value = 30
+          double target_x = 30.0;   // set horizon value = 30
           double target_y = s(target_x);   // giving the spline x value to get y
           double target_dist = sqrt(target_x*target_x + target_y*target_y);   // the distance from our car to the target point
 
@@ -350,17 +378,6 @@ int main() {
             next_x_vals.push_back(x_point);
             next_y_vals.push_back(y_point);
           }
-
-          /*  car can move in the lane but not smooth (violate acceleration and jerk)
-          double dist_inc = 0.45;
-          for (int i = 0; i < 50; i++){
-            double next_s = car_s + (i+1) * dist_inc;
-            double next_d = 6;
-            vector<double> xy = getXY(next_s, next_d, map_waypoints_s, map_waypoints_x, map_waypoints_y);
-            next_x_vals.push_back(xy[0]);
-            next_y_vals.push_back(xy[1]);
-          }
-          */
 
           msgJson["next_x"] = next_x_vals;
           msgJson["next_y"] = next_y_vals;
