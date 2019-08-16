@@ -99,13 +99,13 @@ int main() {
           vector<double> next_x_vals;
           vector<double> next_y_vals;
 
-          // the lane of our car
-          int lane = (int)car_d / 4;
-
           /**
            * TODO: define a path made up of (x,y) points that the car will visit
            *   sequentially every .02 seconds
            */
+
+           // the lane of our car
+           int lane = (int)car_d / 4;
 
           int prev_size = previous_path_x.size();
 
@@ -141,12 +141,8 @@ int main() {
                 too_close = true;
                 front_car_speed = check_speed;
                 front_car_position = check_car_s;
-                if (lane == 0){
-                  // if our car in lane 0, and there is a car in front of us, then most_left_lane = false
+                if (lane == 0 || lane == 2){
                   most_left_lane = false;
-                }
-                else if (lane == 2){
-                  // if our car in lane 2, and there is a car in front of us, then most_right_lane = false
                   most_right_lane = false;
                 }
               }
@@ -159,23 +155,25 @@ int main() {
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
               // check if there is a car in adjecent lane within the range (-20m ~ 100m)
-              if ((check_car_s - car_s) < 100 && (check_car_s - car_s) > -20){
+              if ((check_car_s - car_s) < 80 && (check_car_s - car_s) > -10){
+
+                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
+                  // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0,
+                  // check if there are cars with in this range (-10m ~ 25m) in the left lane
+                  left_lane_available = false;
+                }
+                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
+                  // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
+                  // check if there are cars with in this range (-10m ~ 25m) in the right lane
+                  right_lane_available = false;
+                }
                 if (other_car_lane == 0){
-                  // if there is other car in lane 0, then most_left_lane = false
+                  // if there is other car in lane 0, then change to lane 0 might not be a good choice
                   most_left_lane = false;
                 }
                 else if (other_car_lane == 2){
-                  // if there is other car in lane 2, then most_left_lane = false
+                  // if there is other car in lane 2, then change to lane 2 might not be a good choice
                   most_right_lane = false;
-                }
-                // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0
-                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -10){
-                  // if the car on the left lane
-                  left_lane_available = false;
-                }
-                // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
-                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 20 && (check_car_s - car_s) > -10){
-                  right_lane_available = false;
                 }
               }
             }
@@ -198,8 +196,8 @@ int main() {
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
               double adjecent_car_pos = check_car_s;
-              // Make path planning more solid when changing lanes
-              if (fabs(adjecent_car_pos - front_car_position) < 8){
+              // Make behavior planning more solid when changing lanes
+              if (fabs(adjecent_car_pos - front_car_position) < 10){
                 if (lane == 1 && other_car_lane == 2){
                   right_lane_available = false;
                 }
@@ -221,50 +219,45 @@ int main() {
             if ((left_lane_available) && (lane > 0)){
               // if left lane is safe to change and our car is not in lane 0, we can consider change to left lane
               if (most_right_lane && !most_left_lane){
-                // if our car in lane 1, and there is no car in lane 2 within 120 meters,
+                // if our car in lane 1, and there is no car in lane 2 within 90 meters,
                 // but there is car in lane 0 within 120 meters, then change to right lane
                 lane += 1;
-                if(ref_vel < 49.5){
-                  ref_vel += 0.1;
-                }
               }
               else{
                 // if there is car in lane 2 within 120 meters then change to left lane
                 lane -= 1;
-                if(ref_vel < 49.5){
-                  ref_vel += 0.1;
-                }
+              }
+              if(ref_vel < 49.5){
+                ref_vel += 0.1;
               }
             }
             else if ((right_lane_available) && (lane < 2)){
               // if right lane is safe to change and our car is not in lane 2, we can consider change to right lane
               if (most_left_lane && !most_right_lane){
-                // if our car in lane 1, and there is no car in lane 0 within 120 meters,
+                // if our car in lane 1, and there is no car in lane 0 within 90 meters,
                 // but there is car in lane 2 within 120 meters, then change to left lane
                 lane -= 1;
-                if(ref_vel < 49.5){
-                  ref_vel += 0.1;
-                }
               }
               else{
                 // if there is car in lane 0 within 120 meters then change to right lane
                 lane += 1;
-                if(ref_vel < 49.5){
-                  ref_vel += 0.1;
-                }
+              }
+              if(ref_vel < 49.5){
+                ref_vel += 0.1;
               }
             }
             else{
               // if lane change is not available, then try to slow down to front car's speed
               if (ref_vel > front_car_speed){
-                ref_vel -= 0.225;
+                ref_vel -= (ref_vel - front_car_speed)/2.24 * 0.01;
               }
               else{
                 ref_vel = front_car_speed;
               }
             }
           }
-          else if(ref_vel < 49.5){
+
+          else if (ref_vel < 49.5){
             if (ref_vel < 30){
               ref_vel += 0.4;
             }
