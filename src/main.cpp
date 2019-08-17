@@ -154,17 +154,17 @@ int main() {
               // predect the car's s in the future
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
-              // check if there is a car in adjecent lane within the range (-10m ~ 80m)
-              if ((check_car_s - car_s) < 80 && (check_car_s - car_s) > -10){
+              // check if there is a car in adjecent lane within the range (-15m ~ 80m)
+              if ((check_car_s - car_s) < 80 && (check_car_s - car_s) > -15){
 
-                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
+                if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15){
                   // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0,
-                  // check if there are cars with in this range (-10m ~ 30m) in the left lane
+                  // check if there are cars with in this range (-15m ~ 30m) in the left lane
                   left_lane_available = false;
                 }
-                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
+                else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -15){
                   // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
-                  // check if there are cars with in this range (-10m ~ 30m) in the right lane
+                  // check if there are cars with in this range (-15m ~ 30m) in the right lane
                   right_lane_available = false;
                 }
                 if (other_car_lane == 0){
@@ -219,12 +219,12 @@ int main() {
             if ((left_lane_available) && (lane > 0)){
               // if left lane is safe to change and our car is not in lane 0, we can consider change to left lane
               if (most_right_lane && !most_left_lane){
-                // if our car in lane 1, and there is no car in lane 2 within 90 meters,
-                // but there is car in lane 0 within 120 meters, then change to right lane
+                // if our car in lane 1, and there is no car in lane 2 within 95 meters,
+                // but there is car in lane 0 within 95 meters, then change to right lane
                 lane += 1;
               }
               else{
-                // if there is car in lane 2 within 120 meters then change to left lane
+                // if there is car in lane 2 within 95 meters then change to left lane
                 lane -= 1;
               }
               if(ref_vel < 49.5){
@@ -234,12 +234,12 @@ int main() {
             else if ((right_lane_available) && (lane < 2)){
               // if right lane is safe to change and our car is not in lane 2, we can consider change to right lane
               if (most_left_lane && !most_right_lane){
-                // if our car in lane 1, and there is no car in lane 0 within 90 meters,
-                // but there is car in lane 2 within 120 meters, then change to left lane
+                // if our car in lane 1, and there is no car in lane 0 within 95 meters,
+                // but there is car in lane 2 within 95 meters, then change to left lane
                 lane -= 1;
               }
               else{
-                // if there is car in lane 0 within 120 meters then change to right lane
+                // if there is car in lane 0 within 95 meters then change to right lane
                 lane += 1;
               }
               if(ref_vel < 49.5){
