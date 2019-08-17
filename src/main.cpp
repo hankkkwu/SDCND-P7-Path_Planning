@@ -154,17 +154,17 @@ int main() {
               // predect the car's s in the future
               check_car_s += (double)prev_size * 0.02 * check_speed;
 
-              // check if there is a car in adjecent lane within the range (-20m ~ 100m)
+              // check if there is a car in adjecent lane within the range (-10m ~ 80m)
               if ((check_car_s - car_s) < 80 && (check_car_s - car_s) > -10){
 
                 if ((lane > other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
                   // if our car in lane 2 and the other car in lane 1, or our car in lane 1 and the other car in lane 0,
-                  // check if there are cars with in this range (-10m ~ 25m) in the left lane
+                  // check if there are cars with in this range (-10m ~ 30m) in the left lane
                   left_lane_available = false;
                 }
                 else if ((lane < other_car_lane) && abs(lane-other_car_lane) == 1 && (check_car_s - car_s) < 30 && (check_car_s - car_s) > -10){
                   // if our car in lane 1 and the other car in lane 2, or our car in lane 0 and the other car in lane 1
-                  // check if there are cars with in this range (-10m ~ 25m) in the right lane
+                  // check if there are cars with in this range (-10m ~ 30m) in the right lane
                   right_lane_available = false;
                 }
                 if (other_car_lane == 0){
