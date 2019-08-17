@@ -1,8 +1,8 @@
 # CarND-Path-Planning-Project
 Self-Driving Car Engineer Nanodegree Program
 
-### Goals
-In this project your goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. You will be provided the car's localization and sensor fusion data, there is also a sparse map list of waypoints around the highway. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
+## Goals
+In this project the goal is to safely navigate around a virtual highway with other traffic that is driving +-10 MPH of the 50 MPH speed limit. I'll use the car's localization, sensor fusion and map data to build a path planner. The car should try to go as close as possible to the 50 MPH speed limit, which means passing slower traffic when possible, note that other cars will try to change lanes too. The car should avoid hitting other cars at all cost as well as driving inside of the marked road lanes at all times, unless going from one lane to another. The car should be able to make one complete loop around the 6946m highway. Since the car is trying to go 50 MPH, it should take a little over 5 minutes to complete 1 loop. Also the car should not experience total acceleration over 10 m/s^2 and jerk that is greater than 10 m/s^3.
 
 
 ## [Rubric points](https://review.udacity.com/#!/rubrics/1971/view)
@@ -14,7 +14,9 @@ My code compile without errors with `cmake` and `make`.
 
 ### Valid Trajectories
 #### The car is able to drive at least 4.32 miles without incident
-The car is able to drive 10 miles without incident.
+The car is able to drive 20 miles without incident.
+![alt text](./image/20mile.png)
+Here is the [result vedio](https://www.youtube.com/watch?v=lQIFHnf9xug)
 
 ####  The car drives according to the speed limit.
 The car doesn't drive faster than the speed limit(50 mph). And it only drives much slower than speed limit when obstructed by traffic.
@@ -31,41 +33,44 @@ The car is able to stay in its lane, except for changing lanes.
 #### The car is able to change lanes
 The car is able to smoothly change lanes when a slower moving car is in front of it and an adjacent lane is clear of other traffic.
 
-## Running the Code
 
----
 ## Reflection
-The code for path planning algorithm starts at src/main.cpp from line 107 to line 375, comments are provided to improve the code readability.
+The code for path planning algorithm is in [src/main.cpp](https://github.com/hankkkwu/SDCND-P7-Path_Planning/blob/master/src/main.cpp) starts from line 107 to line 375, comments are provided to improve the code readability.
 Basiclly, the code consist of three parts:
 
 ### Prediction
-In this part of code(line 107 ~ line 219), I use the data(velocity, s and d in frenet) from sensor fusion to predict where other cars would be in around 1 second, and use these information to solve the following situations:
+In this part of code (line 107 ~ line 219), I use the data(velocity, s and d in frenet) from sensor fusion to predict where other cars would be in around 1 second, and use these information to solve the following situations:
 1. Is there a slow moving car in front of us within 30 meters?
-   I'll check if the car is in the same lane line with our car, then calculate the distance between us after 1 second, if the distance is less than 30 meters, I would rise a flag as too close, and keep track that car's s value and speed.
+
+   First, I'll check if the car is in the same lane line with our car, then calculate the distance between us after 1 second, if the distance is less than 30 meters, I will raise a flag as too close, and keep track that car's s value and speed.
 
 
 2. Is it safe to change lanes?
-   If other cars are not in the same lane with our car, I'll check which lane the car is, and use our car's s value as origin, set a range between -10m to 25m, if any other lane has any car within this range, that lane would not be safe to change lane to. I also consider the distance between the car in other lane and the car in front of us, if the distance less than 10 meters, that lane will be consider as not safe to change lane to.
+
+   If other cars are not in the same lane with our car, I'll check which lane the car is, and use our car's s value as origin, set a range between -10m to 30m, if any other lane has any car within this range, that lane would not be safe to change lane to. I also check the distance between the car in other lane and the car in front of us, if the distance less than 10 meters, that lane will be consider as not safe to change lane to.
 
 
 ### Behavior Planning
-Based on the prediction of other cars, we need to decide what kind of behavior our car should planning to do:
+Based on the prediction of other cars, we need to decide what kind of behavior our car should planning to do (code from line 217 to line 267):
 1. When there is a slow moving car in front of us within 30 meters, do we need to slow down, change lane to right or change lane to left?
+
    If there is a slow moving car in front of us within 30 meters, I'll first check if the left lane is safe to change or not, if it's safe to change, then I will check if there is any car in left lane and right lane 80 meters ahead, though the left lane is safe to change, we still might be obstructed by traffic. If left lane is safe to change and there is no car in left lane 80 meters ahead, I'll change to left lane. If there is a car in left lane 80 meters ahead, and there is no car in right lane 80 meters ahead, I'll change to right lane. And the same logic for checking the right lane is safe to change or not. Finally, if lane change is not available, I'll slow down to the front car's speed.
 
 
 2. When to speed up?
+
    When there is no car in front of us within 30 meters and our speed is slower than the speed limit (50mph), I'll speed up the car.
 
 
 ### Generate Trajectory
-This part of code uses our car's speed and lane output from behavior planning, also some information about car's x, y, yaw, and previous path points to calculate the trajectory.
+This part of code (line 269 ~ line 373) uses our car's speed and lane output from behavior planning, also some information about car's x, y, yaw, and previous path points to calculate the trajectory.
 
 To generate trajectories, I'll use spline instead of quintic polynomial. before using spline, I need to create a list of widely spaced waypoints (I will create 5 waypoints in this project), the first two waypoints will be the last two points of the previous trajectory (or the car position if the previous trajectory has less than 2 points left), and the last three waypoints would be evenly spaced at 30m ahead of the starting point(the second waypoint), then to make it easier to compute,I will use starting point as origin(0,0), shift all the waypoints, and rotate car reference angle to 0 degree, finally feed those 5 waypoints into spline to create points to fit in my path planner. My path planner will have 50 points, if I have any point from previous path, I'll just add them into the path planner, and then add the points spline created, so the path planner will always have 50 points.
 
 
-
-### Simulator.
+## Running the Code
+---
+### Simulator
 You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
 To run the simulator on Mac/Linux, first make the binary file executable with the following command:
@@ -73,7 +78,14 @@ To run the simulator on Mac/Linux, first make the binary file executable with th
 sudo chmod u+x {simulator_file_name}
 ```
 
-## Dependencies
+### Basic Build Instructions
+1. Clone this repo.
+2. Make a build directory: `mkdir build && cd build`
+3. Compile: `cmake .. && make`
+4. Run it: `./path_planning`.
+
+
+### Dependencies
 
 * cmake >= 3.5
   * All OSes: [click here for installation instructions](https://cmake.org/install/)
@@ -93,13 +105,6 @@ sudo chmod u+x {simulator_file_name}
     cd uWebSockets
     git checkout e94b6e1
     ```
-
-## Basic Build Instructions
-
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./path_planning`.
 
 
 ## Details
