@@ -55,7 +55,7 @@ In this part of code (line 107 ~ line 219), I use the data(velocity, s and d in 
 Based on the prediction of other cars, we need to decide what kind of behavior our car should planning to do (code from line 217 to line 267):
 1. When there is a slow moving car in front of us within 30 meters, do we need to slow down, change lane to right or change lane to left?
 
-   If there is a slow moving car in front of us within 30 meters, I'll first check if the left lane is safe to change or not, if it's safe to change, then I will check if there is any car in left lane and right lane 80 meters ahead, though the left lane is safe to change, we still might be obstructed by traffic. If left lane is safe to change and there is no car in left lane 80 meters ahead, I'll change to left lane. If there is a car in left lane 80 meters ahead, and there is no car in right lane 80 meters ahead, I'll change to right lane. And the same logic for checking the right lane is safe to change or not. Finally, if lane change is not available, I'll slow down to the front car's speed.
+   If there is a slow moving car in front of us within 30 meters, I'll first check if the left lane is safe to change or not, if it's safe to change, then I will check if there is any car in left lane and right lane 80 meters ahead, though the left lane is safe to change, we still might be obstructed by traffic after changing lanes. If left lane is safe to change and there is no car in left lane 80 meters ahead, I'll change to left lane. If there is a car in left lane 80 meters ahead, and there is no car in right lane 80 meters ahead, I'll change to right lane. And the same logic for checking the right lane is safe to change or not. Finally, if lane change is not available, I'll slow down to the front car's speed.
 
 
 2. When to speed up?
@@ -71,7 +71,7 @@ To generate trajectories, I'll use spline instead of quintic polynomial. before 
 
 ## Running the Code
 ### Simulator
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab] (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
+You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab](https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
 To run the simulator on Mac/Linux, first make the binary file executable with the following command:
 ```shell
