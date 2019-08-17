@@ -6,7 +6,7 @@ In this project the goal is to safely navigate around a virtual highway with oth
 
 
 ## [Rubric points](https://review.udacity.com/#!/rubrics/1971/view)
----
+
 ### Compilation
 #### The code compiles correctly.
 My code compile without errors with `cmake` and `make`.
@@ -16,6 +16,7 @@ My code compile without errors with `cmake` and `make`.
 #### The car is able to drive at least 4.32 miles without incident
 The car is able to drive 20 miles without incident.
 ![alt text](./image/20mile.png)
+
 Here is the [result vedio](https://www.youtube.com/watch?v=lQIFHnf9xug)
 
 ####  The car drives according to the speed limit.
@@ -69,9 +70,8 @@ To generate trajectories, I'll use spline instead of quintic polynomial. before 
 
 
 ## Running the Code
----
 ### Simulator
-You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
+You can download the Term3 Simulator which contains the Path Planning Project from the [releases tab] (https://github.com/udacity/self-driving-car-sim/releases/tag/T3_v1.2).  
 
 To run the simulator on Mac/Linux, first make the binary file executable with the following command:
 ```shell
