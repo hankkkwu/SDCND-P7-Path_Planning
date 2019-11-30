@@ -13,11 +13,14 @@ My code compile without errors with `cmake` and `make`.
 
 
 ### Valid Trajectories
+
+#### Here is the result video:
+
+![result video](http://img.youtube.com/vi/lQIFHnf9xug/0.jpg)](https://www.youtube.com/watch?v=lQIFHnf9xug "Highway Driving project")
+
 #### The car is able to drive at least 4.32 miles without incident
 The car is able to drive 20 miles without incident.
 ![alt text](./image/20mile.png)
-
-Here is the [result vedio](https://www.youtube.com/watch?v=lQIFHnf9xug)
 
 ####  The car drives according to the speed limit.
 The car doesn't drive faster than the speed limit(50 mph). And it only drives much slower than speed limit when obstructed by traffic.
